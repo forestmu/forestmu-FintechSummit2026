@@ -1,0 +1,237 @@
+import 'package:dotted_border/dotted_border.dart' show BorderType, DottedBorder;
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+// import 'package:mingle/backend-client.dart';
+import 'package:mingle/components/mingle-button.dart';
+import 'package:mingle/components/mingle-overlay.dart' show LoadingOverlay;
+import 'package:mingle/components/mingle-title.dart';
+import 'package:mingle/widgets/NavBar.dart';
+import 'package:mingle/styles/colors.dart';
+import 'package:mingle/styles/login-register-bg.dart';
+import 'package:mingle/styles/widget-styles.dart';
+// import 'package:image-picker/image-picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:mingle/components/dialogs.dart' show showErrorAlertDialog;
+import 'package:mingle/utils/form-validator.dart';
+import 'dart:io';
+import 'dart:convert';
+// import 'package:supabase_flutter/supabase_flutter.dart'
+    // show AuthException, AuthResponse, FileOptions, Supabase;
+
+class RegisterUploadDP extends StatefulWidget {
+  // final BackendClient backendClient;
+  // final String name, email, password;
+
+  const RegisterUploadDP({
+    super.key,
+    // required this.backendClient,
+    // required this.name,
+    // required this.email,
+    // required this.password,
+  });
+
+  @override
+  State<RegisterUploadDP> createState() => _RegisterUploadDPState();
+}
+
+class _RegisterUploadDPState extends State<RegisterUploadDP> {
+  TextEditingController userName = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  // final ImagePicker picker = ImagePicker();
+  // final supabase = Supabase.instance.client;
+  File? file;
+
+  // Future<File?> pickImage() async {
+  //   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  //   if (image == null) return null;
+  //   return File(image.path);
+  // }
+
+  // Future<String> uploadImage(File file) async {
+  //   try {
+  //     // final user = Supabase.instance.client.auth.currentUser;
+  //     final fileName =
+  //         '${user!.id}_${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+  //     return await supabase.storage
+  //         .from('profile-images')
+  //         .upload(
+  //           'public/$fileName',
+  //           file,
+  //           fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+  //         );
+  //   } catch (e) {
+  //     print("print: " + e.toString());
+  //     return e.toString();
+  //   }
+  // }
+
+  // void signup_2() async {
+  //   final loader = LoadingOverlay();
+  //   loader.show(context);
+  //   try {
+  //     widget.backendClient
+  //         .getRequest("/auth/check_username?user_name=${userName.text}")
+  //         .then((res) async {
+  //           if (res.statusCode == 200) {
+  //             try {
+  //               final AuthResponse res = await supabase.auth.signUp(
+  //                 email: widget.email,
+  //                 password: widget.password,
+  //                 data: {'user_name': userName.text, 'name': widget.name},
+  //               );
+
+  //               String filename = await uploadImage(file!);
+
+  //               widget.backendClient
+  //                   .postRequest("/auth/signup", {
+  //                     'name': widget.name,
+  //                     'email': widget.email,
+  //                     'profile_url': filename,
+  //                     "user_name": userName.text,
+  //                   })
+  //                   .then((res) {
+  //                     if (res.statusCode == 200) {
+  //                       // Opens Nav Bar
+  //                       Get.offAll(() => NavBar());
+  //                     } else {
+  //                       // Error
+  //                       if (!mounted)
+  //                         return; // Just keep it its for context issues
+  //                       String message = json.decode(res.body)['detail'];
+  //                       showErrorAlertDialog(context, message);
+  //                     }
+  //                   });
+  //             } on AuthException catch (e) {
+  //               if (!mounted) return; // Just keep it its for context issues
+  //               showErrorAlertDialog(context, e.message);
+  //             } catch (error) {
+  //               if (!mounted) return; // Just keep it its for context issues
+  //               showErrorAlertDialog(context, "Please try again");
+  //             } finally {
+  //               loader.hide();
+  //             }
+  //           } else {
+  //             if (!mounted) return; // Just keep it its for context issues
+  //             String message = json.decode(res.body)['detail'];
+  //             showErrorAlertDialog(context, message);
+  //           }
+  //         });
+  //   } catch (error) {
+  //     if (!mounted) return; // Just keep it its for context issues
+  //     showErrorAlertDialog(context, "Please try again");
+  //   } finally {
+  //     loader.hide();
+  //   }
+  // }
+
+  @override
+  Widget build(BuildContext context) {
+    double height = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // Fix for bottom overflow by blank pixels error
+      body: LoginRegisterBg(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            mingleTitle(size: 64),
+            SizedBox(height: height * 0.01),
+            Text(
+              "Personalise Your Account",
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: height * 0.045),
+            file == null
+                ? GestureDetector(
+                  onTap: () async {
+                    // File? tFile = await pickImage();
+                    // setState(() {
+                    //   file = tFile;
+                    // });
+                  },
+                  child: DottedBorder(
+                    borderType: BorderType.Circle,
+                    color: secondary,
+                    dashPattern: [6, 3], // 6px dash, 3px gap
+                    strokeWidth: 2,
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_rounded,
+                            size: 40,
+                            color: Colors.black,
+                          ),
+                          Text(
+                            "Upload Profile Photo",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                : ClipOval(
+                  child: Image.file(
+                    file!,
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+            SizedBox(height: height * 0.03),
+            Form(
+              key: _formKey,
+              child: TextFormField(
+                controller: userName,
+                decoration: textFieldDeco.copyWith(hintText: "Username"),
+                validator: (value) => FormValidator.isEmpty(value, "username"),
+              ),
+            ),
+            SizedBox(height: height * 0.015),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                vertical: height * 0.033,
+                horizontal: 0,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: mingleButton(
+                      text: "Confirm",
+                      onPressed: () async {
+                        if (file == null) {
+                          Get.snackbar(
+                            "Note",
+                            "Please select a profile picture",
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Color(0xFFFFFFFF),
+                          );
+                        } else if (_formKey.currentState!.validate()) {
+                          // signup_2();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
