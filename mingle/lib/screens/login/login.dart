@@ -21,6 +21,9 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+  // Get a reference your Supabase client
+  // final supabase = Supabase.instance.client;
+
   bool passwordVisible = false;
   late TextEditingController email;
   late TextEditingController password;
@@ -33,6 +36,27 @@ class _LoginState extends State<Login> {
     // Initialize controllers without default text
     email = TextEditingController();
     password = TextEditingController();
+    loadSavedRole();
+  }
+
+  // NEW: selection state, 0 = User, 1 = Restaurant
+  bool isUser = true; // default: User
+
+  Future<void> loadSavedRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString("role");
+
+    if (role != null) {
+      setState(() {
+        isUser = role == "user";
+      });
+    }
+  }
+
+  // Save role to SharedPreferences
+  Future<void> saveRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("role", isUser ? "user" : "restaurant");
   }
 
   @override
@@ -123,6 +147,35 @@ class _LoginState extends State<Login> {
                   ),
                 ),
               ),
+
+              SizedBox(height: height * 0.033),
+
+              // //select user/restaurant role
+              // ToggleButtons(
+              //   borderRadius: BorderRadius.circular(12),
+              //   selectedColor: Colors.white,
+              //   fillColor: secondary,
+              //   color: black,
+              //   isSelected: [isUser, !isUser],
+              //   onPressed: (int index) async {
+              //     setState(() {
+              //       isUser = index == 0; // 0 = User, 1 = Restaurant
+              //     });
+              //     await saveRole(); // save immediately
+              //   },
+              //   children: const [
+              //     Padding(
+              //       padding: EdgeInsets.symmetric(horizontal: 16),
+              //       child: Text("User"),
+              //     ),
+              //     Padding(
+              //       padding: EdgeInsets.symmetric(horizontal: 16),
+              //       child: Text("Restaurant"),
+              //     ),
+              //   ],
+              // ),
+
+
               Padding(
                 padding: EdgeInsets.symmetric(
                   vertical: height * 0.033,
@@ -133,16 +186,36 @@ class _LoginState extends State<Login> {
                     Expanded(
                       child: mingleButton(
                         key: Key('goToMainPage'),
-                        text: isLoading ? "Loading..." : "Login",
-                        onPressed: isLoading ? null : () {
+                        text: isLoading ? "Loading..." : "Login",                        
+                        onPressed: isLoading ? null : () async {
+                          await saveRole();
                           handleLogin();
+
+                          // final loader = LoadingOverlay();
+                          // loader.show(context);
+                          // try {
+                          //   await supabase.auth.signInWithPassword(
+                          //     email: email.text,
+                          //     password: password.text,
+                          //   );
+                          //   // Route to nav bar
+                          //   Get.offAll(() => NavBar());
+                          // } on AuthException catch (e) {
+                          //   if (!mounted) return; // Just keep it its for context issues
+                          //   showErrorAlertDialog(context, e.message);
+                          // } catch (error) {
+                          //   if (!mounted) return; // Just keep it its for context issues
+                          //   showErrorAlertDialog(context, "Please try again");
+                          // } finally {
+                          //   loader.hide();
+                          // }
                         },
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: height * 0.18),
+              SizedBox(height: height * 0.10),
               RichText(
                 text: TextSpan(
                   style: const TextStyle(color: Colors.black, fontSize: 16),
@@ -189,10 +262,10 @@ class _LoginState extends State<Login> {
       });
 
       // Get selected role
-      String selectedLoginRole = selectedRole[0] ? "user" : "restaurant";
+      String selectedLoginRole = isUser ? "user" : "restaurant";
 
       // Call different API based on role
-      final result = selectedLoginRole == "user"
+      final result = isUser
           ? await AuthService().loginUser(email.text, password.text)
           : await AuthService().loginRestaurant(email.text, password.text);
 

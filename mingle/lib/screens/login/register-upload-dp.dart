@@ -36,10 +36,39 @@ class _RegisterUploadDPState extends State<RegisterUploadDP> {
   TextEditingController userName = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   File? file;
+
+  // NEW: selection state, 0 = User, 1 = Restaurant
+  bool isUser = true; // default: User
+
+  @override
+  void initState() {
+    super.initState();
+    loadSavedRole();
+  }
+
+  Future<void> loadSavedRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString("role");
+
+    if (role != null) {
+      setState(() {
+        isUser = role == "user";
+      });
+    }
+  }
+
+  // Save role to SharedPreferences
+  Future<void> saveRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("role", isUser ? "user" : "restaurant");
+  }
+
+  //other role selector (TODO)
   List<bool> selectedRole = [true, false]; // default: User
   bool isLoading = false;
 
   final RegisterController registerController = Get.put(RegisterController());
+ // Image picker 
   final ImagePicker picker = ImagePicker();
 
   Future<void> pickImage() async {
@@ -194,13 +223,12 @@ class _RegisterUploadDPState extends State<RegisterUploadDP> {
               selectedColor: Colors.white,
               fillColor: secondary,
               color: black,
-              isSelected: selectedRole,
-              onPressed: (int index) {
+              isSelected: [isUser, !isUser],
+              onPressed: (int index) async {
                 setState(() {
-                  for (int i = 0; i < selectedRole.length; i++) {
-                    selectedRole[i] = i == index;
-                  }
+                  isUser = index == 0; // 0 = User, 1 = Restaurant
                 });
+                await saveRole(); // save immediately
               },
               children: const [
                 Padding(
@@ -225,8 +253,30 @@ class _RegisterUploadDPState extends State<RegisterUploadDP> {
                   Expanded(
                     child: mingleButton(
                       text: isLoading ? "Registering..." : "Confirm",
-                      onPressed: isLoading ? null : () {
+                      onPressed: isLoading ? null : () async {
                         handleSignUp();
+                        if (file == null) {
+                          Get.snackbar(
+                            "Note",
+                            "Please select a profile picture",
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Color(0xFFFFFFFF),
+                          );
+                        } else if (_formKey.currentState!.validate()) {
+                          // signup_2();
+                          // Save role locally
+                          await saveRole();
+
+                          // TODO: call signup function here if needed
+                          // Navigate to correct page based on role
+                          if (isUser) {
+                            Get.offAll(() => NavBarUser());
+                          } else {
+                            Get.offAll(() => NavBarRestaurant());
+                          }
+                        }
+                      
+                       
                       },
                     ),
                   ),
