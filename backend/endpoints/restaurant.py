@@ -38,7 +38,7 @@ async def registerRequest(request: Request):
     return res
 
 def register(email, name, photo, description, dateIDs, password):
-    usr_jsn =  {"email": email,
+    restaurant_jsn =  {"email": email,
                 "name": name,
                 "photo": photo,
                 "description": description,
@@ -46,10 +46,10 @@ def register(email, name, photo, description, dateIDs, password):
                 "password": password,
                 }
     
-    res = find_one_collection({"email": email}, "users")
+    res = find_one_collection({"email": email}, "restaurants")
 
     if res == None:
-        usr = add_to_collection(usr_jsn, "users")
+        usr = add_to_collection(restaurant_jsn, "restaurants")
         return format_success_msg({"access": True})
     else:
         return format_error_msg("Username exists in a collection, Please try a different one")
@@ -76,6 +76,6 @@ def getProfile(email):
     else:
         return format_error_msg("No user found with this email")
 
-register("1", "name", "photo", "description", [1,2,3], [1,2,3], "6")
-login("1", "6")
-getProfile("2")
+print(register("restaurant@123", "restaurant", "photo", "description", [1,2,3], "6"))
+# login("1", "6")
+# getProfile("2")
