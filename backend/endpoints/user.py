@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
-from database.database import find_one_collection, add_to_collection, update_to_collection, delete_from_collection
+from database.database import find_one_collection, add_to_collection, update_to_collection, delete_from_collection, init_pymongo, open_collection
 from misc.misc import read_json, format_error_msg, format_success_msg
+from pymongo import MongoClient
 import hashlib
 import random
 import string
@@ -10,14 +11,14 @@ router = APIRouter()
 
 @router.post("/login")
 async def loginRequest(request: Request):
-    name, password, error = await read_json(request, ["name", "password"])
+    email, password, error = await read_json(request, ["email", "password"])
     if error:
         return format_error_msg(error)
     
-    return getAuth(name, password)
+    return getAuth(email, password)
 
-def login(name, password):
-    res = find_one_collection({"name": name, "password": password}, "users")
+def login(email, password):
+    res = find_one_collection({"email": email, "password": password}, "users")
     if res == None:
         print("Password doesnt match or no user found")
         return format_error_msg("Password doesnt match or no user found")
@@ -27,28 +28,24 @@ def login(name, password):
 
 @router.post("/register")
 async def registerRequest(request: Request):
-    name, email, photo, description, dates, password, public_key, private_key, error = await read_json(request, 
+    email, name, photo, description, dateIDs, matches, password, error = await read_json(request, 
         [
-        "name", "email", "photo", "description", "dates", "password",
-                "public key", "private key"
+        "email", "name", "photo", "description", "dateIDs", "matches", "password", 
         ]
         )
     if error:
         return format_error_msg(error)
-    res = register(name, email, photo, description, dates, password,
-                public_key, private_key)
+    res = register(email, name, photo, description, dateIDs, matches, password)
     return res
 
-def register(name, email, photo, description, dates, password,
-                public_key, private_key):
-    usr_jsn =  {"name": name,
-                "email": email,
+def register(email, name, photo, description, dateIDs, matches, password):
+    usr_jsn =  {"email": email,
+                "name": name,
                 "photo": photo,
                 "description": description,
-                "dates": dates,
+                "dateIDs": dateIDs,
+                "matches": matches,
                 "password": password,
-                "public key": public_key,
-                "private key": private_key
                 }
     
     res = find_one_collection({"email": email}, "users")
@@ -95,28 +92,49 @@ async def uploadRequest(request: Request):
 def uploadSSID(ssid):
     return False
 
-@router.post("/getDates")
-async def getDatesRequest(request: Request):
-    email, error = await read_json(request, ["email"])
-    if error:
-        return format_error_msg(error)
-    res = getDates(email)
-    return res
+# @router.post("/getDates")
+# async def getDatesRequest(request: Request):
+#     email, error = await read_json(request, ["email"])
+#     if error:
+#         return format_error_msg(error)
+#     res = getDates(email)
+#     return res
 
-# TODO format the date_object 
-def getDates(email):
-    res = find_one_collection({"email": email}, "users")
-    if res == None:
-        print("Not a valid user")
-        return format_error_msg("Not a valid user")
-    else:
-        print(res)
-        array_of_dates = res["dateIDs"]
-        for date in array_of_dates:
-            # date_object = find_one_collection({"date"})
-            pass
+# # TODO format the date_object 
+# def getDates(email):
+#     res = find_one_collection({"email": email}, "users")
+#     if res == None:
+#         print("Not a valid user")
+#         return format_error_msg("Not a valid user")
+#     else:
+#         print(res)
+#         dateIds = res["dateIDs"]
+        
+#         for dateID in dateIds:
+#             date_object = find_one_collection({"date"})
+#             pass
 
         # return format_success_msg()
+
+@router.get("/getRandomProfile")
+async def getRandomProfileRequest(request: Request):
+    res = getRandomProfile()
+    return res
+
+def getRandomProfile():
+    client = init_pymongo()
+    col = open_collection("users", client)
+    
+    # Get a random profile
+    random_doc = col.aggregate([
+        {'$sample': {'size': 1}}
+    ])
+
+    for doc in random_doc:
+        return doc
+
+
+    
 
 
 # register("1", "2", "3", "4", "5", "6", "7", "8")
