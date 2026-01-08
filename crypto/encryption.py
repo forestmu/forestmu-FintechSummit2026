@@ -1,16 +1,12 @@
 
-
-
 import os
 import base64
+from ecies import encrypt, decrypt
+from coincurve import PublicKey, PrivateKey
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-
-from xrpl.wallet import Wallet
-
 from crypto.constants import SEED_FOLDER
 
 # 1. Encrypt/Decrypt for accessing wallet seed stored locally
@@ -33,9 +29,7 @@ def save_seed_to_file(name: str, seed: str, password: str):
     
     with open(SEED_FOLDER / f"{name}.txt", "wb") as file:
         file.write(salt + encrypted_data)
-
     print(f"Seed successfully encrypted and saved to", str(SEED_FOLDER / f"{name}.txt"))
-
 
 def retrieve_seed(name: str, password: str) -> str:
     if not os.path.exists(SEED_FOLDER / f"{name}.txt"):
@@ -57,41 +51,26 @@ def retrieve_seed(name: str, password: str) -> str:
         return "Error: Wrong password or corrupted file."
 
 
-
 # 2. Encrypt/Decrypt with keys for fulfilment fields in DateDB
-def decrypt_with_seed(seed, encrypted_secret):
-    w = Wallet.from_seed(seed)
+def encrypt_with_xrp_pubkey(wallet_pubkey_hex: str, plaintext: bytes) -> str:
+    pubkey_hex = wallet_pubkey_hex.replace('0x', '').replace('0X', '')
+    pubkey_bytes = bytes.fromhex(pubkey_hex)
+    
+    pubkey = PublicKey(pubkey_bytes)
+    uncompressed_pubkey = pubkey.format(compressed=False)
+    
+    encrypted = encrypt(uncompressed_pubkey, plaintext)
+    return base64.b64encode(encrypted).decode('utf-8')
 
-    private_key = serialization.load_pem_private_key(
-        w.private_key,
-        password=None  
-    )
-
-    try:
-        decrypted_secret = private_key.decrypt(
-            encrypted_secret,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-        print(f"The secret is: {decrypted_secret.decode('utf-8')}")
-    except Exception as e:
-        print("Failed to decrypt. Likely the wrong private key or corrupted data.")
-
-
-def encrypt_with_pubkey(pubkey_bytes: bytes, secret):
-    public_key = serialization.load_pem_public_key(pubkey_bytes)
-
-    encrypted_blob = public_key.encrypt(
-        secret,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-
-    return encrypted_blob
-
+def decrypt_with_xrp_privkey(wallet_privkey_hex: str, encrypted_str: str) -> bytes:    
+    privkey_hex = wallet_privkey_hex.replace('0x', '').replace('0X', '')
+    privkey_bytes = bytes.fromhex(privkey_hex)
+    
+    if len(privkey_bytes) == 33 and privkey_bytes[0] == 0x00:
+        privkey_bytes = privkey_bytes[1:]
+    
+    privkey = PrivateKey(privkey_bytes)
+    
+    encrypted_bytes = base64.b64decode(encrypted_str)
+    plaintext = decrypt(privkey.secret, encrypted_bytes)
+    return plaintext

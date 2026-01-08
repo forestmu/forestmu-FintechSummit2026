@@ -1,4 +1,5 @@
 
+from xrpl import CryptoAlgorithm
 from xrpl.wallet import generate_faucet_wallet, Wallet
 from xrpl.models.requests import AccountInfo
 
@@ -12,7 +13,8 @@ from crypto.encryption import save_seed_to_file, retrieve_seed
 
 
 def create_and_store_test_wallet(name: str, password: str) -> Wallet:
-    wallet = generate_faucet_wallet(CLIENT)
+    pre_wallet = Wallet.create(algorithm=CryptoAlgorithm.SECP256K1)
+    wallet = generate_faucet_wallet(CLIENT, wallet=pre_wallet)
     save_seed_to_file(name, wallet.seed, password)
     
     print(f"\n=== {name} Wallet ===")
@@ -27,7 +29,7 @@ def create_and_store_test_wallet(name: str, password: str) -> Wallet:
 
 def recreate_wallet_from_seed_file(name: str, password: str) -> Wallet:
     seed = retrieve_seed(name, password)
-    return Wallet.from_seed(seed)
+    return Wallet.from_seed(seed, algorithm=CryptoAlgorithm.SECP256K1)
 
 
 def get_wallet_balance(address: str) -> float:
@@ -46,13 +48,3 @@ def get_wallet_balance(address: str) -> float:
 
 
 
-if __name__ == "__main__":
-    print("Creating Alice and Bob wallets...")
-    alice_wallet = create_and_store_test_wallet("Alice", "Alice")
-    # bob_wallet = create_and_store_test_wallet("Bob")
-    print("Done!\n")
-    
-    # Example: Recreate Alice's wallet
-    print("Recreating Alice's wallet from saved seed...")
-    alice_recreated = recreate_wallet_from_seed_file("Alice")
-    print(f"Recreated Alice Address: {alice_recreated.classic_address}")
