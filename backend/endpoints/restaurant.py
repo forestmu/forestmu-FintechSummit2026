@@ -17,12 +17,10 @@ async def loginRequest(request: Request):
     return getAuth(email, password)
 
 def login(email, password):
-    res = find_one_collection({"email": email, "password": password}, "users")
+    res = find_one_collection({"email": email, "password": password}, "restaurants")
     if res == None:
-        print("Password doesnt match or no user found")
         return format_error_msg("Password doesnt match or no user found")
     else:
-        print("Login Successful")
         return format_success_msg({"access": True})
 
 @router.post("/register")
@@ -77,5 +75,5 @@ def getProfile(email):
         return format_error_msg("No user found with this email")
 
 print(register("restaurant@123", "restaurant", "photo", "description", [1,2,3], "6"))
-# login("1", "6")
+print(login("restaurant@123", "6"))
 # getProfile("2")
