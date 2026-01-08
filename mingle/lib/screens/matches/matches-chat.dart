@@ -12,6 +12,9 @@ class ChatMessageModel {
   final bool isMe;
   final MessageType type;
   final DateTime timestamp;
+  final DateTime? dateTime; // optional for invites
+  final String? location; // optional for invites
+  final DateInviteStatus? inviteStatus; // null if not a date invite
 
   ChatMessageModel({
     required this.id,
@@ -19,10 +22,15 @@ class ChatMessageModel {
     required this.isMe,
     required this.type,
     required this.timestamp,
+    this.dateTime,
+    this.location,
+    this.inviteStatus,
   });
 }
 
-enum MessageType { text, system }
+enum MessageType { text, system, dateInvite }
+
+enum DateInviteStatus { pending, accepted, declined }
 
 /// =======================
 /// Matches Chat Page
@@ -96,6 +104,106 @@ class _MatchesChatState extends State<MatchesChat> {
     });
   }
 
+  /// =======================
+  /// Date Invite Feature
+  /// =======================
+  void _proposeDate() {
+    final locationController = TextEditingController();
+    final dateController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Propose a Date",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: locationController,
+              decoration: const InputDecoration(
+                labelText: "Location",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: dateController,
+              decoration: const InputDecoration(
+                labelText: "Time",
+                hintText: "e.g. 8 PM, 10 Jan",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                final location = locationController.text.trim();
+                final dateText = dateController.text.trim();
+                if (location.isEmpty || dateText.isEmpty) return;
+
+                setState(() {
+                  messages.add(
+                    ChatMessageModel(
+                      id: _genId(),
+                      content: "📅 Date proposed: $location at $dateText",
+                      isMe: true,
+                      type: MessageType.dateInvite,
+                      timestamp: DateTime.now(),
+                      location: location,
+                      dateTime: DateTime.now(), // can parse dateText if needed
+                      inviteStatus: DateInviteStatus.pending,
+                    ),
+                  );
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text("Send Proposal"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _respondToDateInvite(int index, DateInviteStatus status) {
+    setState(() {
+      messages[index] = ChatMessageModel(
+        id: messages[index].id,
+        content: messages[index].content,
+        isMe: messages[index].isMe,
+        type: messages[index].type,
+        timestamp: messages[index].timestamp,
+        location: messages[index].location,
+        dateTime: messages[index].dateTime,
+        inviteStatus: status,
+      );
+
+      // Add system message
+      messages.add(ChatMessageModel(
+        id: _genId(),
+        content: status == DateInviteStatus.accepted
+            ? "✅ You accepted the date invite!"
+            : "❌ You declined the date invite.",
+        isMe: false,
+        type: MessageType.system,
+        timestamp: DateTime.now(),
+      ));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,6 +224,12 @@ class _MatchesChatState extends State<MatchesChat> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _proposeDate,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -124,7 +238,32 @@ class _MatchesChatState extends State<MatchesChat> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                return ChatBubble(msg: messages[index]);
+                final msg = messages[index];
+
+                if (msg.type == MessageType.dateInvite && !msg.isMe && msg.inviteStatus == DateInviteStatus.pending) {
+                  // show accept/decline buttons
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ChatBubble(msg: msg),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          TextButton(
+                            onPressed: () => _respondToDateInvite(index, DateInviteStatus.accepted),
+                            child: const Text("Accept"),
+                          ),
+                          TextButton(
+                            onPressed: () => _respondToDateInvite(index, DateInviteStatus.declined),
+                            child: const Text("Decline"),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return ChatBubble(msg: msg);
               },
             ),
           ),
@@ -210,11 +349,37 @@ class ChatBubble extends StatelessWidget {
             color: msg.isMe ? secondary : const Color(0xFFD4C6FD),
           ),
         ),
-        child: Text(
-          msg.content,
-          style: TextStyle(
-            color: msg.isMe ? Colors.white : Colors.black,
-          ),
+        child: Column(
+          crossAxisAlignment:
+              msg.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(
+              msg.content,
+              style: TextStyle(
+                color: msg.isMe ? Colors.white : Colors.black,
+              ),
+            ),
+            if (msg.type == MessageType.dateInvite && msg.inviteStatus != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  msg.inviteStatus == DateInviteStatus.pending
+                      ? "⏳ Pending"
+                      : msg.inviteStatus == DateInviteStatus.accepted
+                          ? "✅ Accepted"
+                          : "❌ Declined",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: msg.inviteStatus == DateInviteStatus.accepted
+                        ? Colors.green
+                        : msg.inviteStatus == DateInviteStatus.declined
+                            ? Colors.red
+                            : Colors.orange,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
